@@ -25,10 +25,10 @@ if $is_in_china; then
     ipv6_dns1='2400:3200::1'
     ipv6_dns2='2402:4e00::' # 不开放 853
 else
-    ipv4_dns1='1.1.1.1'
-    ipv4_dns2='8.8.8.8' # 不开放 80
-    ipv6_dns1='2606:4700:4700::1111'
-    ipv6_dns2='2001:4860:4860::8888' # 不开放 80
+    ipv4_dns1='8.8.8.8'
+    ipv4_dns2='8.8.4.4'
+    ipv6_dns1='2001:4860:4860::8844'
+    ipv6_dns2='2001:4860:4860::8888'
 fi
 
 # 找到主网卡
@@ -236,11 +236,11 @@ test_connect() {
 test_internet() {
     for i in $(seq 5); do
         echo "Testing Internet Connection. Test $i... "
-        if is_need_test_ipv4 && test_connect "$(get_first_ipv4_addr | remove_netmask)" "$ipv4_dns1" >/dev/null 2>&1; then
+        if is_need_test_ipv4 && test_connect "$(get_first_ipv4_addr | remove_netmask)" "1.1.1.1" >/dev/null 2>&1; then
             echo "IPv4 has internet."
             ipv4_has_internet=true
         fi
-        if is_need_test_ipv6 && test_connect "$(get_first_ipv6_addr | remove_netmask)" "$ipv6_dns1" >/dev/null 2>&1; then
+        if is_need_test_ipv6 && test_connect "$(get_first_ipv6_addr | remove_netmask)" "2606:4700:4700::1111" >/dev/null 2>&1; then
             echo "IPv6 has internet."
             ipv6_has_internet=true
         fi
