@@ -931,14 +931,14 @@ iface $ethx inet static
     address $ipv4_addr
     gateway $ipv4_gateway
 EOF
-            # dns
-            if list=$(get_current_dns 4); then
-                for dns in $list; do
-                    cat <<EOF >>$conf_file
-    dns-nameservers $dns
-EOF
-                done
-            fi
+#             # dns
+#             if list=$(get_current_dns 4); then
+#                 for dns in $list; do
+#                     cat <<EOF >>$conf_file
+#     dns-nameservers $dns
+# EOF
+#                 done
+#             fi
         fi
 
         # ipv6
@@ -958,15 +958,15 @@ iface $ethx inet6 static
 EOF
         fi
 
-        # dns
-        # 有 ipv6 但需设置 dns 的情况
-        if is_need_manual_set_dnsv6; then
-            for dns in $(get_current_dns 6); do
-                cat <<EOF >>$conf_file
-    dns-nameserver $dns
-EOF
-            done
-        fi
+#         # dns
+#         # 有 ipv6 但需设置 dns 的情况
+#         if is_need_manual_set_dnsv6; then
+#             for dns in $(get_current_dns 6); do
+#                 cat <<EOF >>$conf_file
+#     dns-nameserver $dns
+# EOF
+#             done
+#         fi
 
         # 禁用 ra
         if should_disable_ra_slaac; then
