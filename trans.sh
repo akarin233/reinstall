@@ -618,13 +618,14 @@ should_disable_ra_slaac() {
 }
 
 is_slaac() {
-    # 防止部分机器slaac/dhcpv6获取的ip/网关无法上网
-    if should_disable_ra_slaac; then
-        return 1
-    fi
-    get_netconf_to slaac
-    # shellcheck disable=SC2154
-    [ "$slaac" = 1 ]
+    # # 防止部分机器slaac/dhcpv6获取的ip/网关无法上网
+    # if should_disable_ra_slaac; then
+    #     return 1
+    # fi
+    # get_netconf_to slaac
+    # # shellcheck disable=SC2154
+    # [ "$slaac" = 1 ]
+    return 1
 }
 
 is_dhcpv6() {
