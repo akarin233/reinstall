@@ -11,6 +11,7 @@ ipv4_gateway=$3
 ipv6_addr=$4
 ipv6_gateway=$5
 is_in_china=$6
+force_static=$7
 
 DHCP_TIMEOUT=15
 DNS_FILE_TIMEOUT=5
@@ -457,8 +458,8 @@ if $ipv4_has_internet && ! { [ -e /etc/resolv.conf ] && is_have_ipv4_dns; }; the
     echo "nameserver $ipv4_dns2" >>/etc/resolv.conf
 fi
 if $ipv6_has_internet && ! { [ -e /etc/resolv.conf ] && is_have_ipv6_dns; }; then
-    echo "nameserver $ipv6_dns1" >>/etc/resolv.conf
-    echo "nameserver $ipv6_dns2" >>/etc/resolv.conf
+    sed -i "1i nameserver $ipv6_dns2" /etc/resolv.conf
+    sed -i "1i nameserver $ipv6_dns1" /etc/resolv.conf
 fi
 
 # 传参给 trans.start
@@ -469,6 +470,7 @@ $dhcpv6_or_slaac && echo 1 >"$netconf/dhcpv6_or_slaac" || echo 0 >"$netconf/dhcp
 $should_disable_accept_ra && echo 1 >"$netconf/should_disable_accept_ra" || echo 0 >"$netconf/should_disable_accept_ra"
 $should_disable_autoconf && echo 1 >"$netconf/should_disable_autoconf" || echo 0 >"$netconf/should_disable_autoconf"
 $is_in_china && echo 1 >"$netconf/is_in_china" || echo 0 >"$netconf/is_in_china"
+$force_static && echo 1 >"$netconf/force_static" || echo 0 >"$netconf/force_static"
 echo "$ethx" >"$netconf/ethx"
 echo "$mac_addr" >"$netconf/mac_addr"
 echo "$ipv4_addr" >"$netconf/ipv4_addr"
