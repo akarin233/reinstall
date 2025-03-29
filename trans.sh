@@ -609,9 +609,16 @@ is_in_china() {
     grep -q 1 /dev/netconf/*/is_in_china
 }
 
+force_static() {
+    grep -q 1 /dev/netconf/*/force_static
+}
+
 # 有 dhcpv4 不等于有网关，例如 vultr 纯 ipv6
 # 没有 dhcpv4 不等于是静态ip，可能是没有 ip
 is_dhcpv4() {
+    if force_static; then
+        return 1
+    fi
     get_netconf_to dhcpv4
     # shellcheck disable=SC2154
     [ "$dhcpv4" = 1 ]
@@ -640,18 +647,27 @@ is_staticv6() {
 }
 
 is_dhcpv6_or_slaac() {
+    if force_static; then
+        return 1
+    fi
     get_netconf_to dhcpv6_or_slaac
     # shellcheck disable=SC2154
     [ "$dhcpv6_or_slaac" = 1 ]
 }
 
 should_disable_accept_ra() {
+    if force_static; then
+        return 1
+    fi
     get_netconf_to should_disable_accept_ra
     # shellcheck disable=SC2154
     [ "$should_disable_accept_ra" = 1 ]
 }
 
 should_disable_autoconf() {
+    if force_static; then
+        return 1
+    fi
     get_netconf_to should_disable_autoconf
     # shellcheck disable=SC2154
     [ "$should_disable_autoconf" = 1 ]
@@ -1003,14 +1019,6 @@ iface $ethx inet static
     address $ipv4_addr
     gateway $ipv4_gateway
 EOF
-            # dns
-            if list=$(get_current_dns 4); then
-                for dns in $list; do
-                    cat <<EOF >>$conf_file
-    dns-nameservers $dns
-EOF
-                done
-            fi
         fi
 
         # ipv6
@@ -1043,16 +1051,6 @@ EOF
     post-up ip route add default via $ipv6_gateway dev $ethx
 EOF
             fi
-        fi
-
-        # dns
-        # 有 ipv6 但需设置 dns 的情况
-        if is_need_manual_set_dnsv6; then
-            for dns in $(get_current_dns 6); do
-                cat <<EOF >>$conf_file
-    dns-nameserver $dns
-EOF
-            done
         fi
 
         # 禁用 ra
@@ -3208,9 +3206,9 @@ EOF
             # non-ELTS
             if is_in_china; then
                 # 不处理 security 源 security.debian.org/debian-security 和 /etc/apt/mirrors/debian-security.list
-                for file in $os_dir/etc/apt/mirrors/debian.list $os_dir/etc/apt/sources.list; do
+                for file in $os_dir/etc/apt/mirrors/debian.list $os_dir/etc/apt/mirrors/debian-security.list $os_dir/etc/apt/sources.list; do
                     if [ -f "$file" ]; then
-                        sed -i "s|deb\.debian\.org/debian|$deb_mirror|" "$file"
+                        sed -i "s|[a-zA-Z.-]*\.debian\.org|mirror.nju.edu.cn|g" "$file"
                     fi
                 done
             fi
@@ -6324,40 +6322,13 @@ refind_main_disk() {
 }
 
 sync_time() {
-    if false; then
-        # arm要手动从硬件同步时间，避免访问https出错
-        # do 机器第二次运行会报错
-        hwclock -s || true
+    apk add chrony
+    if is_in_china; then
+        sed -i 's|pool.ntp.org|cn.ntp.org.cn|g' /etc/chrony/chrony.conf
+    else
+        sed -i 's|pool.ntp.org|time.cloudflare.com|g' /etc/chrony/chrony.conf
     fi
-
-    # ntp 时间差太多会无法同步？
-    # http 时间可能不准确，毕竟不是专门的时间服务器
-    #      也有可能没有 date header?
-    method=http
-
-    case "$method" in
-    ntp)
-        if is_in_china; then
-            ntp_server=ntp.aliyun.com
-        else
-            ntp_server=pool.ntp.org
-        fi
-        # -d[d]   Verbose
-        # -n      Run in foreground
-        # -q      Quit after clock is set
-        # -p      PEER
-        ntpd -d -n -q -p "$ntp_server"
-        ;;
-    http)
-        url="$(grep -m1 ^http /etc/apk/repositories)/$(uname -m)/APKINDEX.tar.gz"
-        # 可能有多行，取第一行
-        date_header=$(wget -S --no-check-certificate --spider "$url" 2>&1 | grep -m1 '^  Date:')
-        # gnu date 不支持 -D
-        busybox date -u -D "  Date: %a, %d %b %Y %H:%M:%S GMT" -s "$date_header"
-        ;;
-    esac
-
-    hwclock -w
+    chronyd -q
 }
 
 is_ubuntu_lts() {
