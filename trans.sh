@@ -609,9 +609,16 @@ is_in_china() {
     grep -q 1 /dev/netconf/*/is_in_china
 }
 
+force_static() {
+    grep -q 1 /dev/netconf/*/force_static
+}
+
 # 有 dhcpv4 不等于有网关，例如 vultr 纯 ipv6
 # 没有 dhcpv4 不等于是静态ip，可能是没有 ip
 is_dhcpv4() {
+    if force_static; then
+        return 1
+    fi
     get_netconf_to dhcpv4
     # shellcheck disable=SC2154
     [ "$dhcpv4" = 1 ]
@@ -640,18 +647,27 @@ is_staticv6() {
 }
 
 is_dhcpv6_or_slaac() {
+    if force_static; then
+        return 1
+    fi
     get_netconf_to dhcpv6_or_slaac
     # shellcheck disable=SC2154
     [ "$dhcpv6_or_slaac" = 1 ]
 }
 
 should_disable_accept_ra() {
+    if force_static; then
+        return 1
+    fi
     get_netconf_to should_disable_accept_ra
     # shellcheck disable=SC2154
     [ "$should_disable_accept_ra" = 1 ]
 }
 
 should_disable_autoconf() {
+    if force_static; then
+        return 1
+    fi
     get_netconf_to should_disable_autoconf
     # shellcheck disable=SC2154
     [ "$should_disable_autoconf" = 1 ]
@@ -1004,14 +1020,6 @@ iface $ethx inet static
     address $ipv4_addr
     gateway $ipv4_gateway
 EOF
-            # dns
-            if list=$(get_current_dns 4); then
-                for dns in $list; do
-                    cat <<EOF >>$conf_file
-    dns-nameservers $dns
-EOF
-                done
-            fi
         fi
 
         # ipv6
@@ -1044,16 +1052,6 @@ EOF
     post-up ip route add default via $ipv6_gateway dev $ethx
 EOF
             fi
-        fi
-
-        # dns
-        # 有 ipv6 但需设置 dns 的情况
-        if is_need_manual_set_dnsv6; then
-            for dns in $(get_current_dns 6); do
-                cat <<EOF >>$conf_file
-    dns-nameserver $dns
-EOF
-            done
         fi
 
         # 禁用 ra
@@ -3331,9 +3329,9 @@ EOF
             # non-ELTS
             if is_in_china; then
                 # 不处理 security 源 security.debian.org/debian-security 和 /etc/apt/mirrors/debian-security.list
-                for file in $os_dir/etc/apt/mirrors/debian.list $os_dir/etc/apt/sources.list; do
+                for file in $os_dir/etc/apt/mirrors/debian.list $os_dir/etc/apt/mirrors/debian-security.list $os_dir/etc/apt/sources.list; do
                     if [ -f "$file" ]; then
-                        sed -i "s|deb\.debian\.org/debian|$deb_mirror|" "$file"
+                        sed -i "s|[a-zA-Z.-]*\.debian\.org|mirror.nju.edu.cn|g" "$file"
                     fi
                 done
             fi
