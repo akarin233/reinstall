@@ -620,7 +620,7 @@ force_static() {
 # 有 dhcpv4 不等于有网关，例如 vultr 纯 ipv6
 # 没有 dhcpv4 不等于是静态ip，可能是没有 ip
 is_dhcpv4() {
-    if ! is_ipv4_has_internet || should_disable_dhcpv4; then
+    if should_disable_dhcpv4; then
         return 1
     fi
 
@@ -630,10 +630,6 @@ is_dhcpv4() {
 }
 
 is_staticv4() {
-    if ! is_ipv4_has_internet; then
-        return 1
-    fi
-
     if ! is_dhcpv4; then
         get_netconf_to ipv4_addr
         get_netconf_to ipv4_gateway
@@ -645,10 +641,6 @@ is_staticv4() {
 }
 
 is_staticv6() {
-    if ! is_ipv6_has_internet; then
-        return 1
-    fi
-
     if ! is_slaac && ! is_dhcpv6; then
         get_netconf_to ipv6_addr
         get_netconf_to ipv6_gateway
@@ -663,18 +655,6 @@ is_dhcpv6_or_slaac() {
     get_netconf_to dhcpv6_or_slaac
     # shellcheck disable=SC2154
     [ "$dhcpv6_or_slaac" = 1 ]
-}
-
-is_ipv4_has_internet() {
-    get_netconf_to ipv4_has_internet
-    # shellcheck disable=SC2154
-    [ "$ipv4_has_internet" = 1 ]
-}
-
-is_ipv6_has_internet() {
-    get_netconf_to ipv6_has_internet
-    # shellcheck disable=SC2154
-    [ "$ipv6_has_internet" = 1 ]
 }
 
 should_disable_dhcpv4() {
@@ -712,7 +692,7 @@ is_slaac() {
     # is_dhcpv6_or_slaac 是实测结果，因此如果实测不通过，也返回 1
 
     # 不要判断 is_staticv6，因为这会导致死循环
-    if ! is_ipv6_has_internet || ! is_dhcpv6_or_slaac || should_disable_accept_ra || should_disable_autoconf; then
+    if ! is_dhcpv6_or_slaac || should_disable_accept_ra || should_disable_autoconf; then
         return 1
     fi
     get_netconf_to slaac
@@ -728,7 +708,7 @@ is_dhcpv6() {
     # is_dhcpv6_or_slaac 是实测结果，因此如果实测不通过，也返回 1
 
     # 不要判断 is_staticv6，因为这会导致死循环
-    if ! is_ipv6_has_internet || ! is_dhcpv6_or_slaac || should_disable_accept_ra || should_disable_autoconf; then
+    if ! is_dhcpv6_or_slaac || should_disable_accept_ra || should_disable_autoconf; then
         return 1
     fi
     get_netconf_to dhcpv6
