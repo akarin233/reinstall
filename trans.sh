@@ -631,10 +631,14 @@ is_in_china() {
     grep -q 1 /dev/netconf/*/is_in_china
 }
 
+force_static() {
+    grep -q 1 /dev/netconf/*/force_static
+}
+
 # 有 dhcpv4 不等于有网关，例如 vultr 纯 ipv6
 # 没有 dhcpv4 不等于是静态ip，可能是没有 ip
 is_dhcpv4() {
-    if ! is_ipv4_has_internet || should_disable_dhcpv4; then
+    if force_static; then
         return 1
     fi
 
@@ -644,10 +648,6 @@ is_dhcpv4() {
 }
 
 is_staticv4() {
-    if ! is_ipv4_has_internet; then
-        return 1
-    fi
-
     if ! is_dhcpv4; then
         get_netconf_to ipv4_addr
         get_netconf_to ipv4_gateway
@@ -659,10 +659,6 @@ is_staticv4() {
 }
 
 is_staticv6() {
-    if ! is_ipv6_has_internet; then
-        return 1
-    fi
-
     if ! is_slaac && ! is_dhcpv6; then
         get_netconf_to ipv6_addr
         get_netconf_to ipv6_gateway
@@ -674,27 +670,13 @@ is_staticv6() {
 }
 
 is_dhcpv6_or_slaac() {
+    if force_static; then
+        return 1
+    fi
+
     get_netconf_to dhcpv6_or_slaac
     # shellcheck disable=SC2154
     [ "$dhcpv6_or_slaac" = 1 ]
-}
-
-is_ipv4_has_internet() {
-    get_netconf_to ipv4_has_internet
-    # shellcheck disable=SC2154
-    [ "$ipv4_has_internet" = 1 ]
-}
-
-is_ipv6_has_internet() {
-    get_netconf_to ipv6_has_internet
-    # shellcheck disable=SC2154
-    [ "$ipv6_has_internet" = 1 ]
-}
-
-should_disable_dhcpv4() {
-    get_netconf_to should_disable_dhcpv4
-    # shellcheck disable=SC2154
-    [ "$should_disable_dhcpv4" = 1 ]
 }
 
 should_disable_accept_ra() {
@@ -717,7 +699,7 @@ is_slaac() {
     # is_dhcpv6_or_slaac 是实测结果，因此如果实测不通过，也返回 1
 
     # 不要判断 is_staticv6，因为这会导致死循环
-    if ! is_ipv6_has_internet || ! is_dhcpv6_or_slaac || should_disable_accept_ra || should_disable_autoconf; then
+    if ! is_dhcpv6_or_slaac || should_disable_accept_ra || should_disable_autoconf; then
         return 1
     fi
     get_netconf_to slaac
@@ -733,7 +715,7 @@ is_dhcpv6() {
     # is_dhcpv6_or_slaac 是实测结果，因此如果实测不通过，也返回 1
 
     # 不要判断 is_staticv6，因为这会导致死循环
-    if ! is_ipv6_has_internet || ! is_dhcpv6_or_slaac || should_disable_accept_ra || should_disable_autoconf; then
+    if ! is_dhcpv6_or_slaac || should_disable_accept_ra || should_disable_autoconf; then
         return 1
     fi
     get_netconf_to dhcpv6
@@ -1072,14 +1054,6 @@ iface $ethx inet static
     address $ipv4_addr
     gateway $ipv4_gateway
 EOF
-            # dns
-            if list=$(get_current_dns 4); then
-                for dns in $list; do
-                    cat <<EOF >>$conf_file
-    dns-nameservers $dns
-EOF
-                done
-            fi
         fi
 
         # ipv6
@@ -1119,42 +1093,6 @@ EOF
                 cat <<EOF >>$conf_file
     post-up ip route add $ipv6_gateway dev $ethx
     post-up ip route add default via $ipv6_gateway dev $ethx
-EOF
-            fi
-        fi
-
-        # dns
-        # 有 ipv6 但需设置 dns 的情况
-        if is_need_manual_set_dnsv6; then
-            for dns in $(get_current_dns 6); do
-                cat <<EOF >>$conf_file
-    dns-nameserver $dns
-EOF
-            done
-        fi
-
-        # 禁用 ra
-        if should_disable_accept_ra; then
-            if [ "$distro" = alpine ]; then
-                cat <<EOF >>$conf_file
-    pre-up echo 0 >/proc/sys/net/ipv6/conf/$ethx/accept_ra
-EOF
-            else
-                cat <<EOF >>$conf_file
-    accept_ra 0
-EOF
-            fi
-        fi
-
-        # 禁用 autoconf
-        if should_disable_autoconf; then
-            if [ "$distro" = alpine ]; then
-                cat <<EOF >>$conf_file
-    pre-up echo 0 >/proc/sys/net/ipv6/conf/$ethx/autoconf
-EOF
-            else
-                cat <<EOF >>$conf_file
-    autoconf 0
 EOF
             fi
         fi
@@ -3476,9 +3414,9 @@ EOF
             # non-ELTS
             if is_in_china; then
                 # 不处理 security 源 security.debian.org/debian-security 和 /etc/apt/mirrors/debian-security.list
-                for file in $os_dir/etc/apt/mirrors/debian.list $os_dir/etc/apt/sources.list; do
+                for file in $os_dir/etc/apt/mirrors/debian.list $os_dir/etc/apt/mirrors/debian-security.list $os_dir/etc/apt/sources.list; do
                     if [ -f "$file" ]; then
-                        sed -i "s|deb\.debian\.org/debian|$deb_mirror|" "$file"
+                        sed -i "s|[a-zA-Z.-]*\.debian\.org|mirror.nju.edu.cn|g" "$file"
                     fi
                 done
             fi
