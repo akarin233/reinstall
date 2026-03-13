@@ -3711,16 +3711,17 @@ EOF
 get_ip_conf_cmd() {
     collect_netconf >&2
     is_in_china && is_in_china=true || is_in_china=false
+    [ "$force_static" = 1 ] && force_static=true || force_static=false
 
     sh=/initrd-network.sh
     if is_found_ipv4_netconf && is_found_ipv6_netconf && [ "$ipv4_mac" = "$ipv6_mac" ]; then
-        echo "'$sh' '$ipv4_mac' '$ipv4_addr' '$ipv4_gateway' '$ipv6_addr' '$ipv6_gateway' '$is_in_china' '$ipv6_extra_addrs'"
+        echo "'$sh' '$ipv4_mac' '$ipv4_addr' '$ipv4_gateway' '$ipv6_addr' '$ipv6_gateway' '$is_in_china' '$ipv6_extra_addrs' '$force_static'"
     else
         if is_found_ipv4_netconf; then
-            echo "'$sh' '$ipv4_mac' '$ipv4_addr' '$ipv4_gateway' '' '' '$is_in_china' ''"
+            echo "'$sh' '$ipv4_mac' '$ipv4_addr' '$ipv4_gateway' '' '' '$is_in_china' '' '$force_static'"
         fi
         if is_found_ipv6_netconf; then
-            echo "'$sh' '$ipv6_mac' '' '' '$ipv6_addr' '$ipv6_gateway' '$is_in_china' '$ipv6_extra_addrs'"
+            echo "'$sh' '$ipv6_mac' '' '' '$ipv6_addr' '$ipv6_gateway' '$is_in_china' '$ipv6_extra_addrs' '$force_static'"
         fi
     fi
 }
@@ -4324,7 +4325,7 @@ fi
 
 # 整理参数
 long_opts=
-for o in ci installer debug minimal allow-ping force-cn help \
+for o in ci installer debug minimal allow-ping force-cn help static \
     add-driver: \
     hold: sleep: \
     iso: \
@@ -4426,6 +4427,10 @@ while true; do
     --force-cn)
         # 仅为了方便测试
         force_cn=1
+        shift
+        ;;
+    --static)
+        force_static=1
         shift
         ;;
     --hold | --sleep)
