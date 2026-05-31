@@ -12,6 +12,7 @@ ipv6_addr=$4
 ipv6_gateway=$5
 is_in_china=$6
 ipv6_extra_addrs=$7
+force_static=$8
 
 DHCP_TIMEOUT=15
 DNS_FILE_TIMEOUT=5
@@ -510,6 +511,7 @@ $should_disable_dhcpv4 && echo 1 >"$netconf/should_disable_dhcpv4" || echo 0 >"$
 $should_disable_accept_ra && echo 1 >"$netconf/should_disable_accept_ra" || echo 0 >"$netconf/should_disable_accept_ra"
 $should_disable_autoconf && echo 1 >"$netconf/should_disable_autoconf" || echo 0 >"$netconf/should_disable_autoconf"
 $is_in_china && echo 1 >"$netconf/is_in_china" || echo 0 >"$netconf/is_in_china"
+$force_static && echo 1 >"$netconf/force_static" || echo 0 >"$netconf/force_static"
 echo "$ethx" >"$netconf/ethx"
 echo "$mac_addr" >"$netconf/mac_addr"
 echo "$ipv4_addr" >"$netconf/ipv4_addr"
