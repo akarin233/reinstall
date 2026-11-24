@@ -13,6 +13,7 @@ ipv6_addr=$4
 ipv6_gateway=$5
 is_in_china=$6
 ipv6_extra_addrs=$7
+force_static=$8
 
 DHCP_TIMEOUT=15
 DNS_FILE_TIMEOUT=5
@@ -698,7 +699,8 @@ for conf in \
     should_add_ipv4_static_dns \
     should_add_ipv6_static_dns \
     ipv4_has_internet \
-    ipv6_has_internet; do
+    ipv6_has_internet \
+    force_static; do
     { eval \$$conf && echo 1 || echo 0; } >"/dev/netconf/$ethx/$conf"
 done
 
