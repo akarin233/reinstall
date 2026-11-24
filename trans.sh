@@ -822,10 +822,14 @@ is_in_china() {
     grep -q 1 /dev/netconf/*/is_in_china
 }
 
+is_force_static() {
+    grep -q 1 /dev/netconf/*/force_static
+}
+
 # 有 dhcpv4 不等于有网关，例如 vultr 纯 ipv6
 # 没有 dhcpv4 不等于是静态ip，可能是没有 ip
 is_dhcpv4() {
-    if ! is_ipv4_has_internet || should_disable_dhcpv4; then
+    if ! is_ipv4_has_internet || should_disable_dhcpv4 || is_force_static; then
         return 1
     fi
 
@@ -835,7 +839,7 @@ is_dhcpv4() {
 }
 
 is_staticv4() {
-    if ! is_ipv4_has_internet; then
+    if ! is_ipv4_has_internet && ! is_force_static; then
         return 1
     fi
 
@@ -1350,15 +1354,6 @@ iface $ethx inet static
     gateway $ipv4_gateway
 EOF
             fi
-            # dns
-            if should_add_ipv4_static_dns &&
-                list=$(get_current_dns 4); then
-                for dns in $list; do
-                    cat <<EOF >>$conf_file
-    dns-nameservers $dns
-EOF
-                done
-            fi
         fi
 
         # ipv6
@@ -1421,15 +1416,6 @@ EOF
             { should_disable_accept_ra || should_disable_autoconf; } &&
             [ "$distro" != alpine ]; then
             echo "iface $ethx inet6 manual" >>$conf_file
-        fi
-        # dns
-        # 有 ipv6 但需设置 dns 的情况
-        if should_add_ipv6_static_dns; then
-            for dns in $(get_current_dns 6); do
-                cat <<EOF >>$conf_file
-    dns-nameserver $dns
-EOF
-            done
         fi
 
         # 禁用 ra
